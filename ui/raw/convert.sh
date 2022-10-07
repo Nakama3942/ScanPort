@@ -1,0 +1,1 @@
+pyuic6 -x ScanPort.ui -o ui_scanport.py
