@@ -54,7 +54,11 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         self.port_list: list[list] = []
 
         # Створюю валідатор для поля вводу списку портів
-        rx = QRegularExpression('^(((4915[0-2]|491[0-4][0-9]|49[0][0-9][0-9]|4[0-8][0-9][0-9][0-9]|[0-3]?[0-9][0-9][0-9][0-9])(-)(4915[0-2]|491[0-4][0-9]|49[0][0-9][0-9]|4[0-8][0-9][0-9][0-9]|[0-3]?[0-9][0-9][0-9][0-9])(,))|((4915[0-2]|491[0-4][0-9]|49[0][0-9][0-9]|4[0-8][0-9][0-9][0-9]|[0-3]?[0-9][0-9][0-9][0-9])(,))){0,}$')
+        number = '(\d|[1-9]\d{1,3}|[1-3]\d{4}|4[0-8]\d{3}|490\d{2}|491[0-4]\d|4915[0-2])'
+        diapason = '(-)'
+        separator = '(,)'
+        volume = '{0,}'
+        rx = QRegularExpression(f'^({number}{diapason}{number}{separator}|{number}{separator}){volume}$')
         validator = QRegularExpressionValidator(rx, self)
         self.linePorts.setValidator(validator)
 
@@ -91,6 +95,9 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         if self.lineHost.text() == '':
             self.lineHost.setText(self.lineHost.placeholderText())
 
+        if self.linePorts.text()[-1] == ',' or self.linePorts.text()[-1] == '-':
+            self.linePorts.setText(self.linePorts.text()[:-1])
+
         self.port_list = self.linePorts.text().split(',')
         for i in range(len(self.port_list)):
             self.port_list[i] = self.port_list[i].split('-')
@@ -120,25 +127,32 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         self.buttScan.setEnabled(True)
         self.toolClear.setEnabled(True)
         self.buttSave.setEnabled(True)
-        self.buttOpen.setEnabled(True)
+        try:
+            with open("data/LastPortsTest.save", "rb"):
+                self.buttOpen.setEnabled(True)
+        except IOError:
+            self.buttOpen.setEnabled(False)
 
     def publish_result(self, result: bool, host: str, port: int):
-        # 6311,6355-6455,5555
-        # 6311,6355-6360,5555
-        # 6311,6360-6355,5555
         if result:
-            self.textResult.append(f"[+] {host}:{port} opened")
+            self.textResult.append(f"<span style='color: darkgreen;'>[+] {host} : {port} opened</span>")
         else:
-            self.textResult.append(f"[!] {host}:{port} closed")
+            self.textResult.append(f"<span style='color: darkred;'>[!] {host} : {port} closed</span>")
 
     def toolClear_Clicked(self):
+        self.lineHost.clear()
+        self.linePorts.clear()
         self.textResult.clear()
         self.toolClear.setEnabled(False)
         self.buttSave.setEnabled(False)
-        self.buttOpen.setEnabled(True)
+        try:
+            with open("data/LastPortsTest.save", "rb"):
+                self.buttOpen.setEnabled(True)
+        except IOError:
+            self.buttOpen.setEnabled(False)
 
     def buttSave_Clicked(self):
-        data = [str(self.lineHost.text()), str(self.linePorts.text()), str(self.textResult.toPlainText())]
+        data = [str(self.lineHost.text()), str(self.linePorts.text()), str(self.textResult.toHtml())]
         if not os.path.exists('data'):
             os.makedirs('data')
         with open("data/LastPortsTest.save", "wb") as save:

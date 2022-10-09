@@ -68,6 +68,7 @@ class Ui_ScanPort(object):
         font = QtGui.QFont()
         font.setPointSize(14)
         self.textResult.setFont(font)
+        self.textResult.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
         self.textResult.setTabChangesFocus(False)
         self.textResult.setDocumentTitle("")
         self.textResult.setObjectName("textResult")

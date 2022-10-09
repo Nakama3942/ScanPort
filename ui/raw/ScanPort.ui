@@ -114,6 +114,9 @@
           <pointsize>14</pointsize>
          </font>
         </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
         <property name="tabChangesFocus">
          <bool>false</bool>
         </property>
