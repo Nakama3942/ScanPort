@@ -15,9 +15,11 @@
 import socket
 from threading import Thread
 from time import sleep
+import pickle
+import os
 
 from PyQt6 import QtWidgets
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
 from PyQt6.QtCore import QRegularExpression
 from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -60,7 +62,15 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         self.buttScan.clicked.connect(self.buttScan_Clicked)
         self.linePorts.textChanged.connect(self.buttScan_Active)
         self.toolClear.clicked.connect(self.toolClear_Clicked)
-        # self.actionRedownload.triggered.connect(lambda: self.actionRedownload_Triggered())
+        self.buttSave.clicked.connect(self.buttSave_Clicked)
+        self.buttOpen.clicked.connect(self.buttOpen_Clicked)
+        self.toolDelete.clicked.connect(self.toolDelete_Clicked)
+
+        try:
+            with open("data/LastPortsTest.save", "rb"):
+                self.toolDelete.setEnabled(True)
+        except IOError:
+            self.toolDelete.setEnabled(False)
 
     def buttScan_Active(self):
         if self.linePorts.text() != '':
@@ -73,7 +83,10 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         update.start()
 
     def portscan(self):
+        self.buttScan.setEnabled(False)
         self.toolClear.setEnabled(False)
+        self.buttSave.setEnabled(False)
+        self.buttOpen.setEnabled(False)
 
         if self.lineHost.text() == '':
             self.lineHost.setText(self.lineHost.placeholderText())
@@ -104,7 +117,10 @@ class ScanPort(QMainWindow, Ui_ScanPort):
                         update_thread.attempt.connect(self.publish_result)
                         sleep(0.2)
 
+        self.buttScan.setEnabled(True)
         self.toolClear.setEnabled(True)
+        self.buttSave.setEnabled(True)
+        self.buttOpen.setEnabled(True)
 
     def publish_result(self, result: bool, host: str, port: int):
         # 6311,6355-6455,5555
@@ -118,3 +134,48 @@ class ScanPort(QMainWindow, Ui_ScanPort):
     def toolClear_Clicked(self):
         self.textResult.clear()
         self.toolClear.setEnabled(False)
+        self.buttSave.setEnabled(False)
+        self.buttOpen.setEnabled(True)
+
+    def buttSave_Clicked(self):
+        data = [str(self.lineHost.text()), str(self.linePorts.text()), str(self.textResult.toPlainText())]
+        if not os.path.exists('data'):
+            os.makedirs('data')
+        with open("data/LastPortsTest.save", "wb") as save:
+            pickle.dump(data, save)
+        self.buttSave.setEnabled(False)
+        self.buttOpen.setEnabled(False)
+        self.toolDelete.setEnabled(True)
+        inform = QMessageBox()
+        inform.setText("Save done")
+        inform.setIcon(QMessageBox.Icon.Information)
+        inform.setStandardButtons(QMessageBox.StandardButton.Ok)
+        ret: int = inform.exec()
+        match ret:
+            case QMessageBox.StandardButton.Ok:
+                return
+
+    def buttOpen_Clicked(self):
+        try:
+            with open("data/LastPortsTest.save", "rb") as save:
+                data = pickle.load(save)
+                self.lineHost.setText(data[0])
+                self.linePorts.setText(data[1])
+                self.textResult.setText(data[2])
+            self.toolClear.setEnabled(True)
+            self.buttSave.setEnabled(False)
+            self.buttOpen.setEnabled(False)
+        except:
+            warning = QMessageBox()
+            warning.setText("No save")
+            warning.setIcon(QMessageBox.Icon.Warning)
+            warning.setStandardButtons(QMessageBox.StandardButton.Ok)
+            ret: int = warning.exec()
+            match ret:
+                case QMessageBox.StandardButton.Ok:
+                    self.buttOpen.setEnabled(False)
+
+    def toolDelete_Clicked(self):
+        os.remove("data/LastPortsTest.save")
+        self.buttOpen.setEnabled(False)
+        self.toolDelete.setEnabled(False)
