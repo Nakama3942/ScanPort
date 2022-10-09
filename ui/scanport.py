@@ -12,12 +12,36 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import socket
+from threading import Thread
+from time import sleep
+
 from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from PyQt6.QtCore import QRegularExpression
 from PyQt6.QtGui import QRegularExpressionValidator
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from ui.raw.ui_scanport import Ui_ScanPort
+
+
+class PortTestThread(QThread):
+    attempt = pyqtSignal(bool, str, int)
+
+    def __init__(self, host: str, port: int):
+        super(PortTestThread, self).__init__()
+        self.host: str = host
+        self.port: int = port
+
+    def run(self):
+        s = socket.socket()
+        try:
+            s.connect((self.host, self.port))  # Connection attempt
+            # s.settimeout(0.2)  # Timeout for a little more speed
+        except:
+            self.attempt.emit(False, self.host, self.port)  # Port is closed
+        else:
+            self.attempt.emit(True, self.host, self.port)  # Port is opened
 
 
 class ScanPort(QMainWindow, Ui_ScanPort):
@@ -25,22 +49,72 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         super(ScanPort, self).__init__()
         self.setupUi(self)
 
-        self.port_list: list = []
+        self.port_list: list[list] = []
 
         # Створюю валідатор для поля вводу списку портів
         rx = QRegularExpression('^(((4915[0-2]|491[0-4][0-9]|49[0][0-9][0-9]|4[0-8][0-9][0-9][0-9]|[0-3]?[0-9][0-9][0-9][0-9])(-)(4915[0-2]|491[0-4][0-9]|49[0][0-9][0-9]|4[0-8][0-9][0-9][0-9]|[0-3]?[0-9][0-9][0-9][0-9])(,))|((4915[0-2]|491[0-4][0-9]|49[0][0-9][0-9]|4[0-8][0-9][0-9][0-9]|[0-3]?[0-9][0-9][0-9][0-9])(,))){0,}$')
-        validator = QRegularExpressionValidator(rx1, self)
+        validator = QRegularExpressionValidator(rx, self)
         self.linePorts.setValidator(validator)
 
         # It's a tracking of button clicks in the window
         self.buttScan.clicked.connect(self.buttScan_Clicked)
-        # self.listLetters.activated.connect(lambda: self.listLetters_Activated(self.listLetters.currentRow()))
-        # self.actionRelogin.triggered.connect(lambda: self.actionRelogin_Triggered())
+        self.linePorts.textChanged.connect(self.buttScan_Active)
+        self.toolClear.clicked.connect(self.toolClear_Clicked)
         # self.actionRedownload.triggered.connect(lambda: self.actionRedownload_Triggered())
 
+    def buttScan_Active(self):
+        if self.linePorts.text() != '':
+            self.buttScan.setEnabled(True)
+        else:
+            self.buttScan.setEnabled(False)
+
     def buttScan_Clicked(self):
-        # 6351,6352,1850,49152,8000-9000,987
+        update = Thread(target=self.portscan, daemon=True)
+        update.start()
+
+    def portscan(self):
+        self.toolClear.setEnabled(False)
+
+        if self.lineHost.text() == '':
+            self.lineHost.setText(self.lineHost.placeholderText())
+
         self.port_list = self.linePorts.text().split(',')
         for i in range(len(self.port_list)):
             self.port_list[i] = self.port_list[i].split('-')
-        self.textResult.setText(str(self.port_list))  # Тест роботи сплітів
+
+        for item in self.port_list:
+            host = self.lineHost.text()
+
+            if len(item) == 1:
+                update_thread = PortTestThread(host, int(item[0]))
+                update_thread.start()
+                update_thread.attempt.connect(self.publish_result)
+                sleep(0.2)
+            elif len(item) == 2:
+                if int(item[0]) < int(item[1]):
+                    for port in range(int(item[0]), int(item[1]) + 1, 1):
+                        update_thread = PortTestThread(host, port)
+                        update_thread.start()
+                        update_thread.attempt.connect(self.publish_result)
+                        sleep(0.2)
+                else:
+                    for port in range(int(item[0]), int(item[1]) - 1, -1):
+                        update_thread = PortTestThread(host, port)
+                        update_thread.start()
+                        update_thread.attempt.connect(self.publish_result)
+                        sleep(0.2)
+
+        self.toolClear.setEnabled(True)
+
+    def publish_result(self, result: bool, host: str, port: int):
+        # 6311,6355-6455,5555
+        # 6311,6355-6360,5555
+        # 6311,6360-6355,5555
+        if result:
+            self.textResult.append(f"[+] {host}:{port} opened")
+        else:
+            self.textResult.append(f"[!] {host}:{port} closed")
+
+    def toolClear_Clicked(self):
+        self.textResult.clear()
+        self.toolClear.setEnabled(False)
