@@ -13,6 +13,9 @@ class Ui_ScanPort(object):
     def setupUi(self, ScanPort):
         ScanPort.setObjectName("ScanPort")
         ScanPort.resize(800, 600)
+        font = QtGui.QFont()
+        font.setFamily("JetBrains Mono")
+        ScanPort.setFont(font)
         self.centralwidget = QtWidgets.QWidget(ScanPort)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
