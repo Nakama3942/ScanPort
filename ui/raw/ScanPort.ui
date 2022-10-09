@@ -70,9 +70,78 @@
            </font>
           </property>
           <property name="placeholderText">
-           <string>1,80,21,1000-1010</string>
+           <string>* or 1,80,21,1000-1010</string>
           </property>
          </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <spacer name="horizontalSpacer_4">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioOrder">
+          <property name="font">
+           <font>
+            <pointsize>9</pointsize>
+           </font>
+          </property>
+          <property name="toolTip">
+           <string>Set if port scan order is important (scan speed is lost on closed ports)</string>
+          </property>
+          <property name="text">
+           <string>Order</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioSpeed">
+          <property name="font">
+           <font>
+            <pointsize>9</pointsize>
+           </font>
+          </property>
+          <property name="toolTip">
+           <string>Set if port scan speed is important (scan speed is fast, but open ports jump slightly ahead of their position in the &quot;result output&quot; stream due to the implementation of the multithreading scheme)</string>
+          </property>
+          <property name="statusTip">
+           <string/>
+          </property>
+          <property name="text">
+           <string>Speed</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
         </item>
        </layout>
       </item>
@@ -93,7 +162,7 @@
          </font>
         </property>
         <property name="toolTip">
-         <string>If ports are not entered, the program will scan ports from 0 to 49151.</string>
+         <string/>
         </property>
         <property name="text">
          <string>Scan</string>
@@ -156,6 +225,22 @@
           </property>
          </spacer>
         </item>
+        <item>
+         <widget class="QToolButton" name="toolStop">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>35</width>
+            <height>35</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Stop</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
       <item>
@@ -182,6 +267,9 @@
         </item>
         <item>
          <widget class="QToolButton" name="toolDelete">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="minimumSize">
            <size>
             <width>75</width>
@@ -195,6 +283,9 @@
         </item>
         <item>
          <widget class="QPushButton" name="buttOpen">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="minimumSize">
            <size>
             <width>150</width>

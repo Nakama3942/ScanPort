@@ -50,15 +50,17 @@ class ScanPort(QMainWindow, Ui_ScanPort):
     def __init__(self):
         super(ScanPort, self).__init__()
         self.setupUi(self)
+        self.FLAG_STOP: bool = False
 
         self.port_list: list[list] = []
 
         # Створюю валідатор для поля вводу списку портів
-        number = '(\d|[1-9]\d{1,3}|[1-3]\d{4}|4[0-8]\d{3}|490\d{2}|491[0-4]\d|4915[0-2])'
+        total = '(\*)'
+        number = '(\d|[1-9]\d{1,3}|[1-3]\d{4}|4[0-8]\d{3}|490\d{2}|491[0-4]\d|4915[01])'
         diapason = '(-)'
         separator = '(,)'
         volume = '{0,}'
-        rx = QRegularExpression(f'^({number}{diapason}{number}{separator}|{number}{separator}){volume}$')
+        rx = QRegularExpression(f'^{total}|({number}{diapason}{number}{separator}|{number}{separator}){volume}$')
         validator = QRegularExpressionValidator(rx, self)
         self.linePorts.setValidator(validator)
 
@@ -69,12 +71,14 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         self.buttSave.clicked.connect(self.buttSave_Clicked)
         self.buttOpen.clicked.connect(self.buttOpen_Clicked)
         self.toolDelete.clicked.connect(self.toolDelete_Clicked)
+        self.toolStop.clicked.connect(self.toolStop_Clicked)
 
         try:
             with open("data/LastPortsTest.save", "rb"):
+                self.buttOpen.setEnabled(True)
                 self.toolDelete.setEnabled(True)
         except IOError:
-            self.toolDelete.setEnabled(False)
+            pass
 
     def buttScan_Active(self):
         if self.linePorts.text() != '':
@@ -83,47 +87,76 @@ class ScanPort(QMainWindow, Ui_ScanPort):
             self.buttScan.setEnabled(False)
 
     def buttScan_Clicked(self):
-        update = Thread(target=self.portscan, daemon=True)
+        update = Thread(target=self.portscan, name='Tester', daemon=True)
         update.start()
 
     def portscan(self):
+        self.lineHost.setEnabled(False)
+        self.linePorts.setEnabled(False)
         self.buttScan.setEnabled(False)
         self.toolClear.setEnabled(False)
         self.buttSave.setEnabled(False)
         self.buttOpen.setEnabled(False)
+        self.toolStop.setEnabled(True)
 
         if self.lineHost.text() == '':
             self.lineHost.setText(self.lineHost.placeholderText())
+        host = self.lineHost.text()
 
-        if self.linePorts.text()[-1] == ',' or self.linePorts.text()[-1] == '-':
-            self.linePorts.setText(self.linePorts.text()[:-1])
-
-        self.port_list = self.linePorts.text().split(',')
-        for i in range(len(self.port_list)):
-            self.port_list[i] = self.port_list[i].split('-')
-
-        for item in self.port_list:
-            host = self.lineHost.text()
-
-            if len(item) == 1:
-                update_thread = PortTestThread(host, int(item[0]))
+        if self.linePorts.text() == '*':
+            for item in range(1, 49152):
+                if self.FLAG_STOP:
+                    self.FLAG_STOP = False
+                    break
+                update_thread = PortTestThread(host, item)
                 update_thread.start()
                 update_thread.attempt.connect(self.publish_result)
-                sleep(0.2)
-            elif len(item) == 2:
-                if int(item[0]) < int(item[1]):
-                    for port in range(int(item[0]), int(item[1]) + 1, 1):
-                        update_thread = PortTestThread(host, port)
-                        update_thread.start()
-                        update_thread.attempt.connect(self.publish_result)
-                        sleep(0.2)
-                else:
-                    for port in range(int(item[0]), int(item[1]) - 1, -1):
-                        update_thread = PortTestThread(host, port)
-                        update_thread.start()
-                        update_thread.attempt.connect(self.publish_result)
-                        sleep(0.2)
+                if self.radioOrder.isChecked():
+                    update_thread.wait()
+                sleep(0.1)
+        else:
+            if self.linePorts.text()[-1] == ',' or self.linePorts.text()[-1] == '-':
+                self.linePorts.setText(self.linePorts.text()[:-1])
 
+            self.port_list = self.linePorts.text().split(',')
+            for i in range(len(self.port_list)):
+                self.port_list[i] = self.port_list[i].split('-')
+
+            for item in self.port_list:
+                if self.FLAG_STOP:
+                    self.FLAG_STOP = False
+                    break
+                if len(item) == 1:
+                    update_thread = PortTestThread(host, int(item[0]))
+                    update_thread.start()
+                    update_thread.attempt.connect(self.publish_result)
+                    if self.radioOrder.isChecked():
+                        update_thread.wait()
+                    sleep(0.1)
+                elif len(item) == 2:
+                    if int(item[0]) < int(item[1]):
+                        for port in range(int(item[0]), int(item[1]) + 1, 1):
+                            if self.FLAG_STOP:
+                                break
+                            update_thread = PortTestThread(host, port)
+                            update_thread.start()
+                            update_thread.attempt.connect(self.publish_result)
+                            if self.radioOrder.isChecked():
+                                update_thread.wait()
+                            sleep(0.1)
+                    else:
+                        for port in range(int(item[0]), int(item[1]) - 1, -1):
+                            if self.FLAG_STOP:
+                                break
+                            update_thread = PortTestThread(host, port)
+                            update_thread.start()
+                            update_thread.attempt.connect(self.publish_result)
+                            if self.radioOrder.isChecked():
+                                update_thread.wait()
+                            sleep(0.1)
+
+        self.lineHost.setEnabled(True)
+        self.linePorts.setEnabled(True)
         self.buttScan.setEnabled(True)
         self.toolClear.setEnabled(True)
         self.buttSave.setEnabled(True)
@@ -132,8 +165,10 @@ class ScanPort(QMainWindow, Ui_ScanPort):
                 self.buttOpen.setEnabled(True)
         except IOError:
             self.buttOpen.setEnabled(False)
+        self.toolStop.setEnabled(False)
 
     def publish_result(self, result: bool, host: str, port: int):
+        # 10,21,50,100,1000-1100,45155,80
         if result:
             self.textResult.append(f"<span style='color: darkgreen;'>[+] {host} : {port} opened</span>")
         else:
@@ -170,26 +205,19 @@ class ScanPort(QMainWindow, Ui_ScanPort):
                 return
 
     def buttOpen_Clicked(self):
-        try:
-            with open("data/LastPortsTest.save", "rb") as save:
-                data = pickle.load(save)
-                self.lineHost.setText(data[0])
-                self.linePorts.setText(data[1])
-                self.textResult.setText(data[2])
-            self.toolClear.setEnabled(True)
-            self.buttSave.setEnabled(False)
-            self.buttOpen.setEnabled(False)
-        except:
-            warning = QMessageBox()
-            warning.setText("No save")
-            warning.setIcon(QMessageBox.Icon.Warning)
-            warning.setStandardButtons(QMessageBox.StandardButton.Ok)
-            ret: int = warning.exec()
-            match ret:
-                case QMessageBox.StandardButton.Ok:
-                    self.buttOpen.setEnabled(False)
+        with open("data/LastPortsTest.save", "rb") as save:
+            data = pickle.load(save)
+            self.lineHost.setText(data[0])
+            self.linePorts.setText(data[1])
+            self.textResult.setText(data[2])
+        self.toolClear.setEnabled(True)
+        self.buttSave.setEnabled(False)
+        self.buttOpen.setEnabled(False)
 
     def toolDelete_Clicked(self):
         os.remove("data/LastPortsTest.save")
         self.buttOpen.setEnabled(False)
         self.toolDelete.setEnabled(False)
+
+    def toolStop_Clicked(self):
+        self.FLAG_STOP = True
