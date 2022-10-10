@@ -27,6 +27,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from ui.raw.ui_scanport import Ui_ScanPort
 
 
+# This class is a QThread that runs a function that tests a port to see if it's open
 class PortTestThread(QThread):
     attempt = pyqtSignal(bool, str, int)
 
@@ -36,6 +37,10 @@ class PortTestThread(QThread):
         self.port: int = port
 
     def run(self):
+        """
+        It attempts to connect to a host on a given port, and it emits a signal with result to connect, the host and port
+        number
+        """
         s = socket.socket()
         try:
             s.connect((self.host, self.port))  # Connection attempt
@@ -50,11 +55,12 @@ class ScanPort(QMainWindow, Ui_ScanPort):
     def __init__(self):
         super(ScanPort, self).__init__()
         self.setupUi(self)
-        self.FLAG_STOP: bool = False
 
+        # Data
+        self.FLAG_STOP: bool = False
         self.port_list: list[list] = []
 
-        # Створюю валідатор для поля вводу списку портів
+        # It's creating a validator for the input field of the list of ports
         total = '(\*)'
         number = '(\d|[1-9]\d{1,3}|[1-3]\d{4}|4[0-8]\d{3}|490\d{2}|491[0-4]\d|4915[01])'
         diapason = '(-)'
@@ -73,6 +79,7 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         self.toolDelete.clicked.connect(self.toolDelete_Clicked)
         self.toolStop.clicked.connect(self.toolStop_Clicked)
 
+        # It's checking if there is a file with the last saved data, and if there is, it enables the button to open it
         try:
             with open("data/LastPortsTest.save", "rb"):
                 self.buttOpen.setEnabled(True)
@@ -81,16 +88,25 @@ class ScanPort(QMainWindow, Ui_ScanPort):
             pass
 
     def buttScan_Active(self):
+        """
+        If the text in the linePorts is not empty, enable the buttScan button
+        """
         if self.linePorts.text() != '':
             self.buttScan.setEnabled(True)
         else:
             self.buttScan.setEnabled(False)
 
     def buttScan_Clicked(self):
+        """
+        It starts a thread that runs the portscan function
+        """
         update = Thread(target=self.portscan, name='Tester', daemon=True)
         update.start()
 
     def portscan(self):
+        """
+        Gets ports and scans them
+        """
         self.lineHost.setEnabled(False)
         self.linePorts.setEnabled(False)
         self.buttScan.setEnabled(False)
@@ -104,7 +120,7 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         host = self.lineHost.text()
 
         if self.linePorts.text() == '*':
-            for item in range(1, 49152):
+            for item in range(0, 49151):
                 if self.FLAG_STOP:
                     self.FLAG_STOP = False
                     break
@@ -168,13 +184,27 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         self.toolStop.setEnabled(False)
 
     def publish_result(self, result: bool, host: str, port: int):
-        # 10,21,50,100,1000-1100,45155,80
+        """
+        A function that is used to publish the result of the port scan
+
+        :param result: bool
+        :type result: bool
+        :param host: The hostname to connect to
+        :type host: str
+        :param port: The port to scan
+        :type port: int
+        """
+        # My example for scan: 10,21,50,100,1000-1100,45155,80
         if result:
             self.textResult.append(f"<span style='color: darkgreen;'>[+] {host} : {port} opened</span>")
         else:
             self.textResult.append(f"<span style='color: darkred;'>[!] {host} : {port} closed</span>")
 
     def toolClear_Clicked(self):
+        """
+        It clears the text in the lineHost, linePorts, and textResult widgets, disables the toolClear and buttSave buttons,
+        and enables the buttOpen button if the file "data/LastPortsTest.save" exists
+        """
         self.lineHost.clear()
         self.linePorts.clear()
         self.textResult.clear()
@@ -187,6 +217,9 @@ class ScanPort(QMainWindow, Ui_ScanPort):
             self.buttOpen.setEnabled(False)
 
     def buttSave_Clicked(self):
+        """
+        It saves the data from the GUI to a file
+        """
         data = [str(self.lineHost.text()), str(self.linePorts.text()), str(self.textResult.toHtml())]
         if not os.path.exists('data'):
             os.makedirs('data')
@@ -205,6 +238,9 @@ class ScanPort(QMainWindow, Ui_ScanPort):
                 return
 
     def buttOpen_Clicked(self):
+        """
+        It opens a file, loads the data, and sets the data to the text boxes
+        """
         with open("data/LastPortsTest.save", "rb") as save:
             data = pickle.load(save)
             self.lineHost.setText(data[0])
@@ -215,9 +251,15 @@ class ScanPort(QMainWindow, Ui_ScanPort):
         self.buttOpen.setEnabled(False)
 
     def toolDelete_Clicked(self):
+        """
+        It deletes a file and disables two buttons
+        """
         os.remove("data/LastPortsTest.save")
         self.buttOpen.setEnabled(False)
         self.toolDelete.setEnabled(False)
 
     def toolStop_Clicked(self):
+        """
+        The function is called when the user clicks on the "Stop" button
+        """
         self.FLAG_STOP = True
