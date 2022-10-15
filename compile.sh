@@ -1,0 +1,1 @@
+pyinstaller -F -w -i "N:\ScanPort\icons\ScanPort_Icon.ico" main.pyw

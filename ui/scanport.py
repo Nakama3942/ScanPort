@@ -20,8 +20,8 @@ import os
 
 from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
-from PyQt6.QtCore import QRegularExpression
-from PyQt6.QtGui import QRegularExpressionValidator
+from PyQt6.QtCore import QRegularExpression, QDir
+from PyQt6.QtGui import QRegularExpressionValidator, QIcon
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from ui.raw.ui_scanport import Ui_ScanPort
@@ -55,6 +55,10 @@ class ScanPort(QMainWindow, Ui_ScanPort):
     def __init__(self):
         super(ScanPort, self).__init__()
         self.setupUi(self)
+
+        # Icon initialization
+        QDir.addSearchPath('icons', 'icons/')
+        self.setWindowIcon(QIcon('icons:ScanPort_Icon.png'))
 
         # Data
         self.FLAG_STOP: bool = False
