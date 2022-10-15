@@ -42,7 +42,7 @@ limitations under the License.
 
 #### Enhancements:
 - Added program icon;
-- main.py renamed to main .pyw to run the program without a console;
+- main.py renamed to main.pyw to run the program without a console;
 - project compilation implemented.
 
 ---
